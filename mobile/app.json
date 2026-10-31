@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "Barrio Limpio",
+    "slug": "barrio-limpio",
+    "scheme": "barriolimpio",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "pe.barriolimpio.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#174B3D",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "single",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-status-bar",
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Barrio Limpio usa tus fotos para documentar reportes de residuos.",
+          "cameraPermission": "Barrio Limpio usa la cámara para registrar el problema y su solución.",
+          "microphonePermission": false
+        }
+      ],
+      "expo-font"
+    ]
+  }
+}
