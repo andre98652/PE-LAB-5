@@ -22,6 +22,7 @@ Aplicación con Expo SDK 58, reportes geolocalizados, confirmaciones de vecinos 
 - [Verificación local](docs/VERIFICACION.md): pruebas realizadas y limitaciones pendientes.
 - [Ubicación y duplicados, versión 0.2](docs/UBICACION.md): GPS, mapa, radio, distrito, fusión y activación sin perder reportes.
 - [Compilar e instalar el APK](docs/APK.md): compilación en GitHub Actions y configuración segura.
+- [Registro de vecinos](docs/REGISTRO.md): crear una cuenta y configurar la confirmación de correo.
 
 ## Ejecución local
 
