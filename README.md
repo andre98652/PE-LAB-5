@@ -4,7 +4,7 @@ Aplicación móvil para que los vecinos registren acumulaciones de residuos, con
 
 ## Estado del proyecto
 
-Versión inicial del proyecto, preparada el 31 de octubre de 2026. El código de la aplicación está en `mobile/` y la migración de base de datos en `supabase/migrations/`. La conexión y la prueba con el proyecto Supabase del usuario todavía están pendientes. Entrega objetivo: 1 de noviembre de 2026, hora de Lima.
+Aplicación con Expo SDK 58, reportes geolocalizados, confirmaciones de vecinos y seguimiento de limpieza. El código está en `mobile/` y las migraciones de base de datos en `supabase/migrations/`. La conexión con Supabase y la ejecución en Expo Go ya se probaron; cada instalación debe aplicar ambas migraciones y configurar sus variables de entorno.
 
 ## Plataforma y tecnologías acordadas
 
@@ -20,6 +20,8 @@ Versión inicial del proyecto, preparada el 31 de octubre de 2026. El código de
 - [Arquitectura de software](docs/ARQUITECTURA.md): componentes, modelo de datos, operaciones, permisos y decisiones técnicas.
 - [Instalación y conexión](docs/INSTALACION.md): preparar Supabase, cuentas de demostración y ejecución en Android.
 - [Verificación local](docs/VERIFICACION.md): pruebas realizadas y limitaciones pendientes.
+- [Ubicación y duplicados, versión 0.2](docs/UBICACION.md): GPS, mapa, radio, distrito, fusión y activación sin perder reportes.
+- [Compilar e instalar el APK](docs/APK.md): compilación en GitHub Actions y configuración segura.
 
 ## Ejecución local
 

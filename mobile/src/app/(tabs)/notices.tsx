@@ -27,7 +27,7 @@ export default function Notices() {
     ListEmptyComponent={!loading && !error ? <Message text="Todavía no tienes avisos. Aparecerán aquí cuando cambie un caso en el que participas." /> : undefined}
     renderItem={({ item }) => <Pressable accessibilityRole="button" onPress={() => void open(item)} style={styles.card}>
       <Text style={styles.label}>{item.read_at ? 'LEÍDO' : 'NUEVO'}</Text><Text style={styles.heading}>{
-        item.event_type === 'nuevo' ? 'Hay un nuevo caso por atender' : item.event_type === 'en_proceso' ? 'Tu reporte está en proceso' : 'Tu reporte fue solucionado'}</Text>
+        item.event_type === 'nuevo' ? 'Hay un nuevo caso por atender' : item.event_type === 'fusionado' ? 'Se unieron reportes del mismo problema' : item.event_type === 'en_proceso' ? 'Tu reporte está en proceso' : 'Tu reporte fue solucionado'}</Text>
       <Text style={styles.subtitle}>{formatDate(item.created_at)} · Ver detalle</Text></Pressable>} />
   </Screen>;
 }

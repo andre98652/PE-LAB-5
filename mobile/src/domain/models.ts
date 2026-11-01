@@ -1,3 +1,5 @@
+import { validCoordinates, type GeoLocation } from './geo.ts';
+
 export type Status = 'pendiente' | 'en_proceso' | 'solucionado';
 export type ProblemType = 'basura' | 'contenedor' | 'desmonte';
 export type Profile = { id: string; display_name: string; role: 'vecino' | 'responsable' };
@@ -7,16 +9,23 @@ export type Incident = {
   status: Status; version: number; created_at: string; updated_at: string;
   point_name: string; reference_point_id: string; participants: number;
   has_contributed: boolean; assigned_to_me: boolean | null; photo_path?: string | null;
+  latitude?: number | null; longitude?: number | null; district?: string | null; distance_m?: number | null;
+  merged_into_id?: string | null;
 };
 export type Evidence = { id: string; kind: 'reporte' | 'solucion'; object_path: string };
 export type IncidentDetail = Incident & {
   has_my_photo: boolean; resolution_note: string | null; resolved_at: string | null;
   distinct_reason: string | null; photos: Evidence[];
+  can_set_location?: boolean; accuracy_m?: number | null; location_source?: string | null;
+  previous_incident_id?: string | null;
+  merged_reports?: { id: string; location_text: string; events: { id: string; to_status: Status; created_at: string; note: string | null }[] }[];
   events: { id: string; to_status: Status; note: string | null; created_at: string; actor_role: string }[];
 };
-export type Match = Pick<Incident, 'id' | 'location_text' | 'description' | 'status'>;
+export type Match = Pick<Incident, 'id' | 'location_text' | 'description' | 'status'> &
+  Partial<Pick<Incident, 'problem_type' | 'photo_path' | 'latitude' | 'longitude' | 'distance_m' | 'district'>>;
 export type Notice = { id: string; incident_id: string; event_type: string; read_at: string | null; created_at: string };
 export type Draft = { point: string; location: string; description: string; type: ProblemType; distinctReason: string };
+export type GeoDraft = Omit<Draft, 'point'> & { geo: GeoLocation | null; district: string };
 export type Photo = { uri: string; base64: string; pathId: string };
 
 export const STATUS_LABEL: Record<Status, string> = {
@@ -34,6 +43,11 @@ export function validateDraft(draft: Draft): string | null {
 }
 export function validateDistinctReason(reason: string): boolean {
   return reason.trim().length >= 10 && reason.trim().length <= 300;
+}
+export function validateGeoDraft(draft: GeoDraft): string | null {
+  if (!validCoordinates(draft.geo)) return 'Confirma la ubicación de la basura antes de guardar.';
+  if (draft.district.trim().length < 3 || draft.district.trim().length > 120) return 'Confirma el distrito y provincia (3 a 120 caracteres).';
+  return validateDraft({ ...draft, point: 'ubicacion-confirmada' });
 }
 export function friendlyError(error: unknown): string {
   const message = error instanceof Error ? error.message

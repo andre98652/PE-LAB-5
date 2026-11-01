@@ -1,5 +1,24 @@
 # Verificación local — 31/10/2026
 
+## Simplificación de la interfaz
+
+Se añadieron selectores desplegables para zona, distancia, estado, tipo y distritos existentes. Inicio mantiene los filtros cerrados con un resumen visible. El reporte se completa en tres pasos (ubicación, detalles y revisión), conservando los datos al retroceder y enviando solo desde la revisión final. La comparación de coincidencias y las validaciones del servidor se mantienen.
+
+Coordenadas manuales, fotografía opcional, mapa del detalle, fotos adicionales, duplicados e historial se muestran al desplegar sus secciones. Una fotografía principal y las acciones del rol permanecen visibles.
+
+Comprobaciones de esta revisión: TypeScript y lint sin errores, 34 resultados locales aprobados y exportaciones Android/web completadas. La vista previa del navegador integrado agotó su tiempo de conexión; queda pendiente confirmar el aspecto y las interacciones en el teléfono.
+
+## Versión 0.2: geolocalización y coincidencias
+
+- TypeScript y lint: sin errores ni advertencias tras integrar ubicación, mapa y fusión.
+- Pruebas automatizadas locales: 34 resultados aprobados, incluidos migración con datos existentes, rangos de coordenadas, distancia en metros, meridiano 180°, candidatos próximos de otro tipo o distrito, filtros de radio, autorizaciones, recurrencia y fusión sin pérdida de fotos ni participantes.
+- Exportaciones Android (bytecode Hermes) y web: completadas con los módulos nuevos.
+- La migración `202610310002_ubicacion.sql` todavía debe ejecutarse en el Supabase del usuario. No se usaron privilegios administrativos ni se modificó su esquema remotamente desde la clave publicable.
+- Pendientes: confirmar en Android GPS/denegación de permiso, mapa y sus recursos de internet, selección manual y recorrido real contra el esquema actualizado. Las pruebas del mapa comprueban el documento generado y la validación de coordenadas; no constituyen una verificación visual de WebView en el teléfono.
+- Las pruebas de concurrencia locales siguen siendo secuenciales con reintentos y versiones antiguas. El bloqueo de creación se implementó en SQL, sin simular una carga concurrente sobre Supabase real.
+
+Las cifras de comprobaciones que figuran debajo corresponden a etapas anteriores.
+
 ## Actualización del piloto móvil
 
 El proyecto se actualizó a Expo SDK 58 para coincidir con Expo Go del teléfono. Tras el ajuste de navegación, TypeScript y lint pasan. La exportación Android con SDK 58 también se completó; la ejecución en teléfono fue confirmada posteriormente por el usuario.

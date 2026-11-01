@@ -25,6 +25,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      ["expo-location", { "locationWhenInUsePermission": "Barrio Limpio usa tu ubicación para proponer el lugar del reporte y buscar incidencias cercanas." }],
       "expo-status-bar",
       "expo-router",
       [

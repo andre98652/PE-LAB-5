@@ -155,5 +155,121 @@ test('Migración y reglas de Barrio Limpio en PostgreSQL', async t => {
     assert.equal(await value('select count(*)::integer as result from public.contributions where incident_id=$1', [initial.id]), 11);
     assert.equal(await value("select count(*)::integer as result from public.notifications where incident_id=$1 and event_type='nuevo'", [initial.id]), 2);
   });
+  await t.test('migración geográfica conserva datos y permisos', async () => {
+    const before = await value('select count(*)::integer as result from public.incidents');
+    await db.exec(await readFile(new URL('../../supabase/migrations/202610310002_ubicacion.sql', import.meta.url), 'utf8'));
+    assert.equal(await value('select count(*)::integer as result from public.incidents'), before);
+    assert.equal(await value('select status as result from public.incidents where id=$1', [incidentId]), 'solucionado');
+    await assert.rejects(create(users.a), /permission denied/);
+    const old = await asUser(users.a, () => value('select public.get_incident($1) as result', [incidentId]));
+    assert.equal(old.latitude, null); assert.equal(old.can_set_location, true);
+    assert.equal(old.photos.length, 1);
+  });
+  const origin = { lat: -12.05, lon: -77.05 };
+  let geoId;
+  let duplicateId;
+  const geoKey = randomUUID();
+  function createGeo(user, lat = origin.lat, lon = origin.lon, key = randomUUID(), type = 'basura', district = 'Comas, Lima', seen = [], reason = null) {
+    return asUser(user, () => value('select public.create_geo_incident($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) as result',
+      [key, lat, lon, district, 'Junto al poste del parque', 'Bolsas acumuladas en la vía pública.', type, 'mapa', null, seen, reason]));
+  }
+  await t.test('distancia en metros, cruce de meridiano y coordenadas inválidas', async () => {
+    assert.ok(Math.abs(await value('select public.barrio_distance_m(0,0,1,0) as result') - 111195.08) < 1);
+    assert.ok(await value('select public.barrio_distance_m(0,179.999,0,-179.999) as result') < 223);
+    for (const bad of [91, 'NaN', 'Infinity', null]) await assert.rejects(createGeo(users.a, bad), /coordenadas válidas/);
+    await assert.rejects(createGeo(users.a, origin.lat, origin.lon, randomUUID(), 'basura', ' '), /distrito y provincia/);
+  });
+  await t.test('crear por coordenadas y repetir petición conserva una incidencia', async () => {
+    const result = await createGeo(users.a, origin.lat, origin.lon, geoKey);
+    assert.equal(result.result, 'created'); geoId = result.id;
+    assert.equal((await createGeo(users.a, origin.lat, origin.lon, geoKey)).id, geoId);
+    const detail = await asUser(users.a, () => value('select public.get_incident($1) as result', [geoId]));
+    assert.equal(detail.latitude, origin.lat); assert.equal(detail.district, 'Comas, Lima');
+    assert.equal(detail.can_set_location, false); assert.equal('created_by' in detail, false);
+  });
+  await t.test('otra foto, clasificación y distrito próximos sugieren el mismo caso', async () => {
+    const result = await createGeo(users.b, origin.lat + 0.0001, origin.lon, randomUUID(), 'contenedor', 'Otro distrito, Lima');
+    assert.equal(result.result, 'matches'); assert.equal(result.matches[0].id, geoId);
+    assert.ok(result.matches[0].distance_m > 10 && result.matches[0].distance_m < 12);
+    await asUser(users.b, () => value('select public.confirm_incident($1,$2) as result', [geoId, randomUUID()]));
+    assert.equal(await value('select count(*)::integer as result from public.contributions where incident_id=$1', [geoId]), 2);
+  });
+  await t.test('candidato nuevo al guardar exige volver a confirmar', async () => {
+    const attempt = await createGeo(users.b, origin.lat, origin.lon, randomUUID(), 'basura', 'Comas, Lima', [], 'Es otra acumulación del otro lado de la calle.');
+    assert.equal(attempt.result, 'matches');
+    const different = await createGeo(users.b, origin.lat, origin.lon, randomUUID(), 'basura', 'Comas, Lima', [geoId], 'Es otra acumulación del otro lado de la calle.');
+    assert.equal(different.result, 'created');
+    duplicateId = different.id;
+  });
+  await t.test('radio y distrito se filtran en servidor; antiguos se conservan aparte', async () => {
+    const far = await createGeo(users.a, origin.lat + 0.01, origin.lon);
+    assert.equal(far.result, 'created');
+    const nearby = await asUser(users.a, () => value("select public.browse_incidents('nearby',$1,$2,500) as result", [origin.lat, origin.lon]));
+    assert.ok(nearby.some(row => row.id === geoId)); assert.equal(nearby.some(row => row.id === far.id), false);
+    assert.ok(nearby.every(row => row.distance_m <= 500 && row.latitude != null));
+    const wider = await asUser(users.a, () => value("select public.browse_incidents('nearby',$1,$2,2000) as result", [origin.lat, origin.lon]));
+    assert.ok(wider.some(row => row.id === far.id));
+    for (let i = 1; i < wider.length; i++) assert.ok(wider[i].distance_m >= wider[i - 1].distance_m);
+    const district = await asUser(users.a, () => value("select public.browse_incidents('district',null,null,1000,'  CÓMAS,   LIMA ') as result"));
+    assert.ok(district.some(row => row.id === far.id));
+    const old = await asUser(users.a, () => value("select public.browse_incidents('unlocated') as result"));
+    assert.ok(old.some(row => row.id === incidentId)); assert.ok(old.every(row => row.latitude === null));
+    await assert.rejects(asUser(users.a, () => value("select public.browse_incidents('nearby',null,null) as result")), /coordenadas válidas/);
+    await assert.rejects(asUser(users.a, () => value("select public.browse_incidents('nearby',$1,$2,0) as result", [origin.lat, origin.lon])), /radio/);
+  });
+  await t.test('solo creador o responsable ubica un caso antiguo; no se reubica uno confirmado', async () => {
+    const args = [incidentId, randomUUID(), origin.lat + 0.1, origin.lon, 'Comas, Lima', 'manual'];
+    await assert.rejects(asUser(users.b, () => value('select public.locate_legacy_incident($1,$2,$3,$4,$5,$6) as result', args)), /Solo el creador/);
+    await asUser(users.a, () => value('select public.locate_legacy_incident($1,$2,$3,$4,$5,$6) as result', args));
+    await asUser(users.a, () => value('select public.locate_legacy_incident($1,$2,$3,$4,$5,$6) as result', args));
+    assert.equal(await value('select count(*)::integer as result from public.location_events where incident_id=$1', [incidentId]), 1);
+    args[1] = randomUUID();
+    await assert.rejects(asUser(users.responsible, () => value('select public.locate_legacy_incident($1,$2,$3,$4,$5,$6) as result', args)), /ya tiene una ubicación/);
+    assert.equal(await value('select status as result from public.incidents where id=$1', [incidentId]), 'solucionado');
+  });
+  await t.test('caso solucionado permite un episodio nuevo en el mismo lugar', async () => {
+    const lat = origin.lat + 0.03;
+    const first = await createGeo(users.a, lat);
+    await asUser(users.responsible, () => value('select public.accept_incident($1,1,$2) as result', [first.id, randomUUID()]));
+    const path = `${users.responsible}/${first.id}/solucion/${randomUUID()}.jpg`;
+    await asUser(users.responsible, () => db.query("insert into storage.objects(bucket_id,name,metadata) values('evidencias',$1,'{\"size\":800,\"mimetype\":\"image/jpeg\"}')", [path]));
+    await asUser(users.responsible, () => value('select public.resolve_incident($1,2,$2,$3,$4) as result', [first.id, 'Se retiraron todos los residuos del lugar.', path, randomUUID()]));
+    const second = await createGeo(users.b, lat);
+    assert.equal(second.result, 'created'); assert.notEqual(second.id, first.id);
+    const detail = await asUser(users.b, () => value('select public.get_incident($1) as result', [second.id]));
+    assert.equal(detail.previous_incident_id, first.id);
+  });
+  await t.test('responsable une duplicados sin perder fotos, participantes ni historial', async () => {
+    const third = randomUUID();
+    await db.query('insert into auth.users(id) values($1)', [third]);
+    await asUser(third, () => value('select public.confirm_incident($1,$2) as result', [duplicateId, randomUUID()]));
+    const path = `${users.b}/${duplicateId}/reporte/${randomUUID()}.jpg`;
+    await asUser(users.b, () => db.query("insert into storage.objects(bucket_id,name,metadata) values('evidencias',$1,'{\"size\":800,\"mimetype\":\"image/jpeg\"}')", [path]));
+    await asUser(users.b, () => db.query('select public.attach_report_photo($1,$2)', [duplicateId, path]));
+    const note = 'Se verificó que las fotos muestran el mismo episodio junto al poste.';
+    await assert.rejects(asUser(users.b, () => value('select public.merge_incidents($1,$2,$3,$4) as result', [duplicateId, geoId, note, randomUUID()])), /Solo un responsable/);
+    await assert.rejects(asUser(users.responsible, () => value('select public.merge_incidents($1,$2,$3,$4) as result', [geoId, geoId, note, randomUUID()])), /dos casos distintos/);
+    const key = randomUUID();
+    for (let attempt = 0; attempt < 2; attempt++) await asUser(users.responsible, () => value('select public.merge_incidents($1,$2,$3,$4) as result', [duplicateId, geoId, note, key]));
+    const detail = await asUser(users.b, () => value('select public.get_incident($1) as result', [duplicateId]));
+    assert.equal(detail.id, geoId); assert.equal(detail.participants, 3);
+    assert.ok(detail.photos.some(photo => photo.object_path === path)); assert.equal(detail.has_my_photo, true);
+    assert.ok(detail.merged_reports.some(row => row.id === duplicateId && row.events.length > 0));
+    assert.equal(await value('select incident_id as result from public.evidence where object_path=$1', [path]), duplicateId);
+    assert.equal(await value("select count(*)::integer as result from public.notifications where incident_id=$1 and event_type='fusionado'", [geoId]), 3);
+    const browse = await asUser(users.a, () => value("select public.browse_incidents('all') as result"));
+    assert.equal(browse.some(row => row.id === duplicateId), false);
+    await assert.rejects(asUser(third, () => value('select public.confirm_incident($1,$2) as result', [duplicateId, randomUUID()])), /unido a otro/);
+    await assert.rejects(asUser(users.responsible, () => value('select public.accept_incident($1,2,$2) as result', [duplicateId, randomUUID()])), /unido a otro/);
+    const allowed = await asUser(users.b, () => value('select public.can_upload_evidence($1) as result', [`${users.b}/${duplicateId}/reporte/${randomUUID()}.jpg`]));
+    assert.equal(allowed, false);
+    const next = await createGeo(users.a, origin.lat + 0.00005, origin.lon, randomUUID(), 'basura', 'Comas, Lima', [geoId], 'Otro caso que el responsable revisará después.');
+    assert.equal(next.result, 'created');
+    await asUser(users.responsible, () => value('select public.merge_incidents($1,$2,$3,$4) as result', [geoId, next.id, note, randomUUID()]));
+    const chained = await asUser(users.b, () => value('select public.get_incident($1) as result', [duplicateId]));
+    assert.equal(chained.id, next.id); assert.equal(chained.participants, 3);
+    assert.ok(chained.photos.some(photo => photo.object_path === path));
+    assert.equal(chained.merged_reports.length, 2);
+  });
   await db.close();
 });

@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { api } from '../services/api';
 import { STATUS_LABEL, TYPE_LABEL, type Incident, type Status } from '../domain/models';
+import { distanceLabel } from '../domain/geo';
 
 export const colors = { green: '#174B3D', accent: '#D6E7B0', background: '#F5F6F1', white: '#FFFFFF',
   ink: '#1E3029', muted: '#64736A', line: '#DCE3DA', error: '#A23232' };
@@ -83,6 +84,8 @@ export function IncidentCard({ incident }: { incident: Incident }) {
     <StatusBadge status={incident.status} />
     <Text style={styles.heading}>{incident.location_text}</Text>
     <Text style={styles.subtitle}>{incident.point_name} · {TYPE_LABEL[incident.problem_type]}</Text>
+    {incident.distance_m != null ? <Text style={styles.label}>A {distanceLabel(incident.distance_m)} del punto de búsqueda</Text> : null}
+    {incident.latitude == null ? <Text style={styles.subtitle}>Reporte antiguo sin ubicación confirmada</Text> : null}
     {incident.photo_path ? <RemotePhoto path={incident.photo_path} label="Fotografía del reporte" /> : null}
     <Text style={styles.text} numberOfLines={2}>{incident.description}</Text>
     <View style={[styles.row, { justifyContent: 'space-between' }]}>

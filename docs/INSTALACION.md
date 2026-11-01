@@ -78,6 +78,8 @@ Después completar PA-01 a PA-10 de `REQUERIMIENTOS.md`. No declarar la integrac
 
 ## 6. Recorrido de exposición
 
+Para la versión geográfica 0.2, aplicar también `202610310002_ubicacion.sql` según [UBICACION.md](UBICACION.md). Los pasos siguientes describen el recorrido original; los reportes nuevos usan coordenadas confirmadas y distrito, no puntos DEMO.
+
 1. Vecino A crea un reporte en un punto DEMO y adjunta una foto de prueba apropiada.
 2. Vecino B intenta reportar en el mismo punto y tipo, ve la coincidencia y suma su aporte.
 3. Responsable consulta Avisos, abre el caso y acepta su atención.

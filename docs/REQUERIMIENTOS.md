@@ -1,6 +1,8 @@
 # Especificación de requisitos — Barrio Limpio
 
-Versión: 0.1. Fecha: 31/10/2026. Entrega objetivo: 01/11/2026, zona horaria America/Lima.
+Versión: 0.2. Fecha: 31/10/2026. Entrega objetivo: 01/11/2026, zona horaria America/Lima.
+
+Ampliación geográfica implementada en código: [UBICACION.md](UBICACION.md). Sus reglas sustituyen la selección por puntos DEMO descrita en la línea base original de este documento. La activación en Supabase real y las pruebas de teléfono correspondientes siguen pendientes de ejecutar la segunda migración.
 
 Estado: propuesta de diseño para un prototipo académico; no constituye evidencia de funciones implementadas ni de requisitos ya validados en campo.
 
@@ -18,16 +20,17 @@ Resultados que se medirán en el piloto: incidencias abiertas y solucionadas, ve
 
 - App móvil Android, interfaz en español y uso con conexión a internet.
 - Inicio de sesión con cuentas preparadas para vecinos y responsables.
-- Un barrio de demostración con un catálogo de puntos de referencia.
+- Coordenadas confirmadas del problema mediante GPS, mapa o entrada manual; distrito y provincia declarados por el vecino.
 - Crear incidencias, consultar sus detalles y agregar una fotografía opcional.
-- Buscar coincidencias antes de crear y confirmar una incidencia existente.
+- Buscar casos abiertos a 30 m antes de crear y confirmar una incidencia existente, aunque tenga otra categoría.
+- Consultar por radio y por distrito; ubicar reportes antiguos sin coordenadas y fusionar duplicados por decisión de un responsable, conservando evidencias.
 - Responsable que acepta casos y registra su solución con evidencia.
 - Historial de incidencias, filtros por estado y tipo, y bitácora de estados.
 - Avisos persistentes dentro de la app y actualización de la bandeja mientras está abierta.
 
 ### Ampliaciones, prioridad P1
 
-GPS y mapa, búsqueda por distancia, filtro por fecha, registro autónomo de usuarios con verificación de correo, fusión de incidencias, rechazo con motivo, solicitud de reapertura, asignación a múltiples cuadrillas y notificaciones push con la app cerrada.
+Filtro por fecha, registro autónomo de usuarios con verificación de correo, rechazo con motivo, solicitud de reapertura, asignación a múltiples cuadrillas y notificaciones push con la app cerrada. La validación de distrito con polígonos oficiales y el reconocimiento de imágenes quedan fuera del alcance actual.
 
 ### Fuera de esta entrega
 
@@ -53,11 +56,11 @@ El creador cuenta como primer participante. Una cuenta solo puede tener un aport
 
 ### RN-02. Duplicados probables
 
-Antes de guardar, se muestran incidencias abiertas del mismo punto de referencia y tipo. La coincidencia es una sugerencia: el usuario puede confirmar la existente o declarar que es un problema distinto, aportando una referencia concreta que lo diferencie.
+Antes de guardar se muestran incidencias abiertas a 30 m o menos del punto confirmado. El tipo puede diferir. La coincidencia es una sugerencia: el usuario puede confirmar la existente o declarar que es un problema distinto, aportando una referencia concreta que lo diferencie.
 
 La comprobación se repite en el servidor. Si apareció una coincidencia después de la consulta inicial, el servidor solicita confirmación en vez de crear silenciosamente otro registro. No se promete detección perfecta ni validación automática de fotografías.
 
-Una incidencia solucionada no bloquea un nuevo episodio en ese lugar. Si dos residuos diferentes coinciden en un punto amplio, se preservan separados con su explicación. El catálogo de puntos debe ser suficientemente específico para el barrio piloto.
+Una incidencia solucionada no bloquea un nuevo episodio en ese lugar. Si dos residuos diferentes coinciden en un área pequeña, se preservan separados con su explicación. Los puntos DEMO existentes solo se conservan como referencias de registros antiguos; no determinan la cercanía de los nuevos.
 
 ### RN-03. Estados
 
@@ -97,13 +100,13 @@ Aceptación: una incidencia creada desde un dispositivo aparece al actualizar el
 
 ### RF-03. Crear incidencia — P0
 
-Solicitar punto de referencia, ubicación escrita de 5 a 160 caracteres, descripción de 10 a 1000 caracteres y un tipo del catálogo: basura acumulada, contenedor desbordado o desmonte. La referencia escrita precisa el lugar dentro del punto elegido. La foto es opcional.
+Solicitar coordenadas confirmadas, distrito y provincia de 3 a 120 caracteres, ubicación escrita de 5 a 160 caracteres, descripción de 10 a 1000 caracteres y un tipo del catálogo: basura acumulada, contenedor desbordado o desmonte. La referencia escrita complementa las coordenadas. La foto es opcional.
 
 Aceptación: no guardar campos vacíos ni textos fuera de límites; registrar fecha del servidor y estado pendiente. Una respuesta fallida no debe borrar el formulario ni anunciar éxito.
 
 ### RF-04. Coincidencias y confirmaciones — P0
 
-Mostrar candidatos del mismo punto y tipo en estado pendiente o en_proceso. Permitir abrir el detalle, confirmar el mismo problema o crear uno distinto con explicación de 10 a 300 caracteres.
+Mostrar candidatos a 30 m o menos en estado pendiente o en_proceso, con distancia, tipo, descripción y foto disponible. Permitir abrir el detalle, confirmar el mismo problema o crear uno distinto con explicación de 10 a 300 caracteres.
 
 Aceptación: dos vecinos confirman un caso y se mantienen una incidencia y dos participantes. Confirmar dos veces desde la misma cuenta no aumenta el contador. Crear un problema distinto conserva su explicación.
 

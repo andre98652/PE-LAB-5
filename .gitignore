@@ -5,4 +5,13 @@ dist/
 !.env.example
 *.log
 coverage/
+*.apk
+*.aab
+*.jks
+*.keystore
+*.p12
+*.p8
+*.pem
+credentials.json
+artifacts/
 

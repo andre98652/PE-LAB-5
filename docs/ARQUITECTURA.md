@@ -1,17 +1,19 @@
 # Arquitectura de software — Barrio Limpio
 
-Versión: 0.1. Fecha: 31/10/2026. Estado: diseño propuesto, pendiente de implementación. Requisitos de referencia: [REQUERIMIENTOS.md](REQUERIMIENTOS.md).
+Versión: 0.2. Fecha: 31/10/2026. Requisitos de referencia: [REQUERIMIENTOS.md](REQUERIMIENTOS.md). La ampliación geográfica y las diferencias respecto de la línea base siguiente se detallan en [UBICACION.md](UBICACION.md). Código y migración preparados; despliegue geográfico pendiente en el proyecto real.
 
 ## 1. Decisiones principales
 
 - **ADR-01, aplicación móvil:** React Native con Expo y TypeScript. Android es el destino principal; navegador es una superficie secundaria de pruebas. Expo Go permite la demostración inicial, pero un APK propio exige un proceso de compilación adicional. No se promete iOS probado.
 - **ADR-02, servicios administrados:** Supabase Free concentra Auth, PostgreSQL, Storage y Realtime. Se evita desarrollar un servidor independiente para el piloto.
-- **ADR-03, duplicados:** catálogo de puntos de referencia y coincidencia por punto y tipo, con confirmación humana. GPS, PostGIS y comparación de imágenes no son dependencias del MVP.
+- **ADR-03, duplicados:** coordenadas confirmadas, búsqueda a 30 m en PostgreSQL mediante Haversine, sin excluir categorías distintas. Confirmación humana y fusión administrativa con archivo de originales. PostGIS y reconocimiento de imágenes no son dependencias del piloto. Los puntos de referencia se conservan para compatibilidad con reportes anteriores.
 - **ADR-04, avisos:** almacenamiento persistente más actualización en tiempo real dentro de la app. No se implementan FCM, SMS, WhatsApp ni correo operativo en esta entrega.
 - **ADR-05, integridad:** las operaciones que afectan varias entidades se ejecutan en funciones PostgreSQL llamadas mediante RPC. La app no controla la transición de estados con actualizaciones sueltas.
 - **ADR-06, evidencias:** fotografías en un bucket privado; rutas en la base de datos. Compresión y conversión compatibles se realizan en el cliente, sin depender del servicio de transformaciones de imágenes.
 
 Son decisiones para el plazo y el piloto acordados. No implican que la infraestructura ya esté configurada.
+
+La versión 0.2 añade `latitude`, `longitude`, `district`, `accuracy_m`, `location_source`, `merged_into_id`, `previous_incident_id` y la tabla protegida `location_events`. Las funciones `browse_incidents`, `nearby_matches`, `create_geo_incident`, `locate_legacy_incident` y `merge_incidents` concentran las nuevas reglas; el servidor retira el permiso de creación del cliente anterior para impedir casos nuevos sin coordenadas. Las secciones históricas de diseño por puntos deben interpretarse junto con la ampliación enlazada.
 
 ## 2. Contexto y componentes
 
